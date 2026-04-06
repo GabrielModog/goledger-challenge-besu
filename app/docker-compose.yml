@@ -1,0 +1,50 @@
+version: "3.9"
+
+services:
+  app:
+    build: .
+    container_name: goledger-app
+    ports:
+      - "8080:8080"
+    environment:
+      - BESU_NODE_URL=${BESU_NODE_URL}
+      - CONTRACT_ADDRESS=${CONTRACT_ADDRESS}
+      - SIGNER_PRIVATE_KEY=${SIGNER_PRIVATE_KEY}
+      - CONTRACT_ABI_PATH=${CONTRACT_ABI_PATH}
+      - CONNECTION_STRING=${CONNECTION_STRING}
+      - SERVER_PORT=8080
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - goledger-network
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: goledger-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: goledger
+    ports:
+      - "5400:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d goledger"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - goledger-network
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  goledger-network:
+    driver: bridge
