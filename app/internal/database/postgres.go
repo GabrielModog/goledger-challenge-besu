@@ -38,3 +38,25 @@ func NewPostgressConnection(ctx context.Context, dsn string) (*Postgres, error) 
 func (db *Postgres) Close() {
 	db.Pool.Close()
 }
+
+func (db *Postgres) RunMigrations(ctx context.Context) error {
+	query := `
+		CREATE TABLE IF NOT EXISTS StorageState (
+			id SERIAL PRIMARY KEY,
+			value TEXT NOT NULL DEFAULT '0',
+			created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+			updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+		);
+		
+		INSERT INTO StorageState (value)
+		SELECT '0'
+		WHERE NOT EXISTS (SELECT 1 FROM StorageState LIMIT 1);
+	`
+
+	_, err := db.Pool.Exec(ctx, query)
+	if err != nil {
+		return fmt.Errorf("failed to run migrations: %w", err)
+	}
+
+	return nil
+}
